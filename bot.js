@@ -32,7 +32,7 @@ async function bot() {
 	grid = getGridInfo();
 	tryDown();
 
-	nextResults[2] = Math.max(calcHori(), calcVert())  + currentResult[1];
+	nextResults[2] = calcHori() + currentResult[1];
 
 	nextResults[3] = 0;
 
