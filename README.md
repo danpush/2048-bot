@@ -9,7 +9,7 @@ It has beat the game before, though not consistantly.
 
 # How To Use
 
-1. Open chrome(tested only with chrome) and go to: http://gabrielecirulli.github.io/2048/ or http://2048game.com/
+1. Open a web browser and go to: http://gabrielecirulli.github.io/2048/ or http://2048game.com/
 2. Press "F12" and go to "Console"
 3. Copy and Pase the following text, then press enter.
 ```js
