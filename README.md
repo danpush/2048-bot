@@ -17,8 +17,4 @@ var grid=[4][4];var items1=[4][4];var onlyUp=!0;var nextResults=[4];function sle
 
 ```
 
-# License
-
-This project is licensed under the MIT License. See the [LICENSE.md](LICENSE.md) file for details
-
 Created October 2017 by Daniel Apushkinsky
