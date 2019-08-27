@@ -2,8 +2,7 @@
 var grid = [4][4];
 var directional_scores = {};
 
-// Call main() in console to start the bot
-async function main() {
+setInterval(function(){
 	// Main function of the bot, this is run in a loop.
 
 	// Get the current tile positions
@@ -42,10 +41,7 @@ async function main() {
 	// right39
 	// down	40
 
-	await sleep(250);
-
-	main();
-}
+}, 250);
 
 
 
@@ -273,9 +269,4 @@ function pressKey(codeKey){
     oEvent.keyCodeVal = codeKey;
 
     document.body.dispatchEvent(oEvent);
-}
-
-function sleep(ms) {
-	// Timeout function. Only called to wait for game animation to finish before proceeding
-	return new Promise(resolve => setTimeout(resolve, ms));
 }
