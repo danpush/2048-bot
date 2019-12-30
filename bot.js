@@ -1,80 +1,167 @@
-// Variables
-var grid = [4][4];
-var directional_scores = {};
-
 setInterval(function(){
-	// Main function of the bot, this is run in a loop.
-
-	// Get the current tile positions
-	grid = getGridInfo();
-
-	// Get a score for every possible direction you can move (left, right, up, down).
-	// The score is calculated as the sum of every tile you break divided by the recursion depth at the time.
-	// So if you merge two 4's on the first turn, it would be +8 points. If you merge them on the second turn
-	// it would be just +4 points (8/2), on the third it would be +2.67 points (8/3), etc. until the depth
-	// specified has been reached
-	// If this move is imposible, the score is set to -infinity
-	var temp = predictLeft(grid);
-	directional_scores["left"] = temp[1] + recursive(temp[0], 2) - stuckPrevention(grid, temp[0]);
-	var temp = predictRight(grid);
-	directional_scores["right"] = temp[1] + recursive(temp[0], 2) - stuckPrevention(grid, temp[0]);
-	var temp = predictUp(grid);
-	directional_scores["up"] = temp[1] + recursive(temp[0], 2) - stuckPrevention(grid, temp[0]);
-	var temp = predictDown(grid);
-	directional_scores["down"] = temp[1] + recursive(temp[0], 2) - stuckPrevention(grid, temp[0]);
-
-	if (directional_scores["down"] >= directional_scores["left"] && directional_scores["down"] >= directional_scores["right"] && directional_scores["down"] >= directional_scores["up"]){
-		//move down
-		pressKey(40);
-	} else if (directional_scores["left"] >= directional_scores["right"] && directional_scores["left"] >= directional_scores["up"]){
-		// move left
+	var grid = getGridInfo();
+	var bestMove = getBestNextMove(grid);
+	
+	if (bestMove == "left"){
 		pressKey(37);
-	} else if (directional_scores["right"] >= directional_scores["up"]){
-		// right
-		pressKey(39);
-	} else {
-		//up
+	} else if (bestMove == "up"){
 		pressKey(38);
+	} else if (bestMove == "right"){
+		pressKey(39);
+	} else if (bestMove == "down"){
+		pressKey(40);
 	}
-	// left	37
-	// up	38
-	// right39
-	// down	40
-
 }, 250);
 
 
-
-function recursive(grid, depth){
-	// Recursive fuction that returns the best score for any given grid and depth
-	// Each score is adjusted based on how far away it is before being added to the grand total.
-
-	var topScore = Math.max(predictLeft(grid)[1], predictRight(grid)[1], predictUp(grid)[1], predictDown(grid)[1]);
-	
-	if (depth == 6){ // Base case, return just the score divided by the set depth
-		return topScore/depth;
-	} else {
-		// Find the best possible score you can achieve in the given grid and depth
-		return topScore/depth + (Math.max(recursive(predictLeft(grid)[0], depth+1), recursive(predictRight(grid)[0], depth+1), recursive(predictUp(grid)[0], depth+1), recursive(predictDown(grid)[0], depth+1)))/depth;
-	}
-}
-
-
-function stuckPrevention(grid1, grid2){
-	// If there is a difference between 2 given grids, return 0
-	// If they are the same, return infinity. This will be added to score of the given direction.
+function calcVert(grid){
+	// Calculate the vertical score (for movement up or down)
+	var vSum = 0;
 	for (var i = 0; i < 4; i++) {
-		for (var j = 0; j < 4; j++) {
-			if (grid1[i][j] != grid2[i][j]){
-				return 0;
+		if (grid[0][i] != 0){
+			if (grid[1][i] == grid[0][i]){
+				vSum += grid[0][i];
+			} else if (grid[1][i] == 0 && grid[2][i] == grid[0][i]){
+				vSum += grid[0][i];
+			} else if (grid[1][i] == 0 && grid[2][i] == 0 && grid[3][i] == grid[0][i]){
+				vSum += grid[0][i];
+			}
+		}
+
+		if (grid[1][i] != 0){
+			if (grid[2][i] == grid[1][i]){
+				vSum += grid[1][i];
+			} else if (grid[2][i] == 0 && grid[3][i] == grid[1][i]){
+				vSum += grid[1][i];
+			}
+		}
+
+		if (grid[2][i] != 0){
+			if (grid[3][i] == grid[2][i]){
+				vSum += grid[2][i];
 			}
 		}
 	}
-	return Infinity;
+	return(vSum);
 }
 
 
-function predictLeft(grid){
+function calcHori(grid){
+	// Calculate the horizontal score (for movement left or right)
+	var hSum = 0;
+	for (var i = 0; i < 4; i++) {
+		if (grid[i][0] != 0){
+			if (grid[i][1] == grid[i][0]){
+				hSum += grid[i][0];
+			} else if (grid[i][1] == 0 && grid[i][2] == grid[i][0]){
+				hSum += grid[i][0];
+			} else if (grid[i][1] == 0 && grid[i][2] == 0 && grid[i][3] == grid[i][0]){
+				hSum += grid[i][0];
+			}
+		}
+
+		if (grid[i][1] != 0){
+			if (grid[i][2] == grid[i][1]){
+				hSum += grid[i][1];
+			} else if (grid[i][2] == 0 && grid[i][3] == grid[i][1]){
+				hSum += grid[i][1];
+			}
+		}
+
+		if (grid[i][2] != 0){
+			if (grid[i][3] == grid[i][2]){
+				hSum += grid[i][2];
+			}
+		}
+	}
+	return(hSum);
+}
+
+
+function getBestNextMove(grid) {
+	var lastWasUp = false; // to make sure that the subsequent move after going up is down
+	var scoreFor = {}; // dictionary of directions, with each value the score/quality of the move
+
+	isPossible = {} // dictionary of directions, where the value is a boolean on whether the move is possible
+	isPossible["down"] = isDifferentGrid(grid, moveDown(grid));
+	isPossible["left"] = isDifferentGrid(grid, moveLeft(grid));
+	isPossible["right"] = isDifferentGrid(grid, moveRight(grid));
+	isPossible["up"] = isDifferentGrid(grid, moveUp(grid));
+
+	// calculate scores if the move is left
+	if (isPossible["left"]){
+		predictedGrid = moveLeft(grid);
+		scoreFor["left"] = Math.max(calcHori(predictedGrid), calcVert(predictedGrid)) + calcHori(grid);
+	} else {
+		scoreFor["left"] = -1;
+	}
+
+	// calculate scores if the move is right
+	if (isPossible["right"]) {
+		predictedGrid = moveRight(grid);
+		scoreFor["right"] = Math.max(calcHori(predictedGrid), calcVert(predictedGrid)) + calcHori(grid);
+	} else {
+		scoreFor["right"] = -1;
+	}
+
+	// calculate scores if the move is down
+	if (isPossible["down"]){
+		predictedGrid = moveDown(grid);
+		scoreFor["down"] = Math.max(calcHori(predictedGrid), calcVert(predictedGrid)) + calcVert(grid);
+	} else {
+		scoreFor["down"] = -1;
+	}
+
+	// scoreFor["up"] is not caclulated as we try to avoid this move at all costs, and only use it if there are no choice
+
+
+	// If the last move was up, then try to move down as soon as possible. This is because our strategy is to stack all the
+	// high value blocks at the bottom, and if the last move was up this strategy was ruined.
+	if (lastWasUp && isPossible["down"]){
+		lastWasUp = false;
+		return "down";
+	// If the only possible move is up
+	} else if (!isPossible["down"] && !isPossible["right"] && !isPossible["left"] && isPossible["up"]){
+		return "up";
+
+	} else if (scoreFor["down"] >= scoreFor["right"] && scoreFor["down"] >= scoreFor["left"] && isPossible["down"]){
+		return "down";
+
+	} else if (scoreFor["right"] == scoreFor["left"] && isPossible["left"] && isPossible["right"]){
+		// If the score for moving left and right is equal, then pick a direction randomly
+		if (Math.floor(Math.random() * 2) == 0){
+			return "right";
+		} else {
+			return "left";
+		}
+
+	} else if (scoreFor["right"] == scoreFor["left"] && isPossible["left"]){
+		return "left";
+
+	} else if (scoreFor["right"] >= scoreFor["left"] && isPossible["right"]) {
+		return "right";
+		
+	} else if (isPossible["left"]){
+		return "left";
+		
+	}
+}
+
+
+function isDifferentGrid(grid1, grid2){
+	// Compare the given grids, and return true if they are different
+	for (var i = 0; i < 4; i++) {
+		for (var j = 0; j < 4; j++) {
+			if (grid1[i][j] != grid2[i][j]){
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+
+function moveLeft(grid){
 	// Predict what the grid and score will look like if you move left in the game
 	// Returns an array with grid and score
 
@@ -98,18 +185,18 @@ function predictLeft(grid){
 				// Combine two tiles
 				if (h == 2 && newGrid[i][j] == newGrid[i][j+1]){
 					newGrid[i][j] *= 2;
-					score += newGrid[i][j]; // Increase score by value of tile
+					//score ++;//= newGrid[i][j]; // Increase score by value of tile
 					newGrid[i][j+1] = 0;
 				}
 			}
 		}
 	}
 
-	return [newGrid, score];
+	return newGrid;
 }
 
 
-function predictRight(grid){
+function moveRight(grid){
 	// Predict what the grid and score will look like if you move right in the game
 	// Returns an array with grid and score
 
@@ -132,18 +219,17 @@ function predictRight(grid){
 				// Combine two tiles
 				if (h == 2 && newGrid[i][j] == newGrid[i][j-1]){
 					newGrid[i][j] *= 2;
-					score += newGrid[i][j]; // Increase score by value of tile
+					score ++;//= newGrid[i][j]; // Increase score by value of tile
 					newGrid[i][j-1] = 0;
 				}
 			}
 		}
 	}
-
-	return [newGrid, score];
+	return newGrid;
 }
 
 
-function predictUp(grid){
+function moveUp(grid){
 	// Predict what the grid and score will look like if you move up in the game
 	// Returns an array with grid and score
 
@@ -166,17 +252,18 @@ function predictUp(grid){
 				// Combine two tiles
 				if (h == 2 && newGrid[j][i] == newGrid[j+1][i]){
 					newGrid[j][i] *= 2;
-					score += newGrid[j][i]; // Increase score by value of tile
+					score ++;//= newGrid[j][i]; // Increase score by value of tile
 					newGrid[j+1][i] = 0;
 				}
 			}
 		}
 	}
-	return [newGrid, score];
+	
+	return newGrid;
 }
 
 
-function predictDown(grid){
+function moveDown(grid){
 	// Predict what the grid and score will look like if you move down in the game
 	// Returns an array with grid and score
 
@@ -199,14 +286,14 @@ function predictDown(grid){
 				// Combine two tiles
 				if (h == 2 && newGrid[j][i] == newGrid[j-1][i]){
 					newGrid[j][i] *= 2;
-					score += newGrid[j][i]; // Increase score by value of tile
+					score ++;//= newGrid[j][i]; // Increase score by value of tile
 					newGrid[j-1][i] = 0;
 				}
 			}
 		}
 	}
 
-	return [newGrid, score];
+	return newGrid;
 }
 
 
